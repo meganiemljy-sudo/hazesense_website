@@ -1,1 +1,78 @@
 # hazesense_website
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HazeSense | Indoor Dust Monitor</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color:#172033;background:#f3f6fb}
+*{box-sizing:border-box}body{margin:0;padding:28px 16px}.wrap{max-width:900px;margin:auto}
+header{margin-bottom:24px}h1{margin:0 0 7px;font-size:30px}header p{margin:0;color:#657087}
+.panel,.metric{background:white;border:1px solid #e2e8f0;border-radius:16px;padding:20px;box-shadow:0 5px 18px #1720330a}
+.status-panel{display:flex;align-items:center;gap:16px;margin-bottom:16px}.dot{width:22px;height:22px;border-radius:50%;background:#9aa3b2;flex:none}
+.status-name{font-size:25px;font-weight:700}.sub{color:#657087;font-size:14px;margin-top:5px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.metric .label{font-size:13px;color:#657087;margin-bottom:9px}.metric .value{font-size:27px;font-weight:700;overflow-wrap:anywhere}.metric .unit{font-size:14px;color:#657087;font-weight:400}
+textarea{width:100%;min-height:100px;border:1px solid #cbd5e1;border-radius:10px;padding:12px;font:14px/1.5 monospace;resize:vertical}button{margin-top:10px;background:#172033;color:white;border:0;border-radius:9px;padding:11px 16px;font-weight:700;cursor:pointer}button:hover{opacity:.9}.hint{font-size:13px;color:#657087;line-height:1.5}.message{margin-top:10px;font-size:14px;color:#a33}.foot{font-size:12px;color:#657087;margin-top:18px}
+@media(max-width:620px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.status-name{font-size:21px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><h1>HazeSense</h1><p>Indoor dust monitoring dashboard</p></header>
+<section class="panel status-panel" aria-live="polite">
+  <span class="dot" id="statusDot"></span>
+  <div><div class="status-name" id="status">Waiting for sensor data</div><div class="sub" id="colour">No reading received yet</div></div>
+</section>
+<section class="grid">
+  <div class="metric"><div class="label">Low Pulse Occupancy (LPO)</div><div class="value" id="lpo">— <span class="unit">%</span></div></div>
+  <div class="metric"><div class="label">Pulse Count</div><div class="value" id="pulses">—</div></div>
+  <div class="metric"><div class="label">LPO Grade</div><div class="value" id="lpoGrade">—</div></div>
+  <div class="metric"><div class="label">Pulse Grade</div><div class="value" id="pulseGrade">—</div></div>
+  <div class="metric"><div class="label">Final Grade</div><div class="value" id="finalGrade">—</div></div>
+  <div class="metric"><div class="label">Sensor Colour</div><div class="value" id="sensorColour">—</div></div>
+</section>
+<section class="panel">
+  <strong>Enter a sensor reading</strong>
+  <p class="hint">For now, paste one complete line copied from the Arduino Serial Monitor. The website will display the values exactly as reported by your code.</p>
+  <textarea id="serialLine" placeholder="Paste the full Serial Monitor line here..."></textarea>
+  <button id="updateBtn" type="button">Update dashboard</button>
+  <div class="message" id="message" role="status"></div>
+</section>
+<p class="foot">HazeSense displays the sensor's reported LPO, pulse count, grades, colour and status. It does not display a PM2.5 reading.</p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const colourHex = {Blue:'#2563eb',Green:'#16a34a',Yellow:'#f59e0b',Red:'#dc2626'};
+function readValue(line, label, pattern) {
+  const match = line.match(new RegExp(label + '\\s*:\\s*(' + pattern + ')', 'i'));
+  return match ? match[1] : null;
+}
+function updateDashboard(){
+  const line = $('serialLine').value.trim();
+  const lpo = readValue(line,'LPO','[0-9]+(?:\\.[0-9]+)?');
+  const pulses = readValue(line,'Pulses','[0-9]+');
+  const lpoGrade = readValue(line,'LPO grade','[0-9]+');
+  const pulseGrade = readValue(line,'Pulse grade','[0-9]+');
+  const finalGrade = readValue(line,'Final grade','[0-9]+');
+  const colour = readValue(line,'Color','[A-Za-z]+');
+  const status = readValue(line,'Status','[A-Za-z ]+');
+  if([lpo,pulses,lpoGrade,pulseGrade,finalGrade,colour,status].some(v=>v===null)){
+    $('message').textContent='I could not read all the required fields. Copy the complete Serial Monitor line and try again.';
+    return;
+  }
+  $('lpo').innerHTML = `${lpo} <span class="unit">%</span>`;
+  $('pulses').textContent=pulses;
+  $('lpoGrade').textContent=lpoGrade;
+  $('pulseGrade').textContent=pulseGrade;
+  $('finalGrade').textContent=finalGrade;
+  $('sensorColour').textContent=colour;
+  $('status').textContent=status.trim();
+  $('colour').textContent=`Sensor colour: ${colour}`;
+  $('statusDot').style.background=colourHex[colour] || '#9aa3b2';
+  $('message').textContent='Dashboard updated from the line you pasted.';
+}
+$('updateBtn').addEventListener('click',updateDashboard);
+</script>
+</body>
+</html>
